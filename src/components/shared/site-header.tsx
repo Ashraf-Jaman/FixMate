@@ -51,17 +51,6 @@ export function SiteHeader() {
         <div className="flex flex-1 items-center justify-end gap-2 sm:gap-3">
           <Button
             asChild
-            variant="ghost"
-            size="icon"
-            className="hidden size-10 rounded-full text-slate-700 hover:bg-slate-100 hover:text-brand-navy sm:inline-flex"
-          >
-            <Link href="/search" aria-label="Search">
-              <Search className="size-[18px]" />
-            </Link>
-          </Button>
-
-          <Button
-            asChild
             variant="outline"
             className="hidden h-10 rounded-full border-header-border bg-white px-5 text-[15px] font-semibold text-brand-navy hover:bg-slate-50 hover:text-brand-navy lg:inline-flex"
           >

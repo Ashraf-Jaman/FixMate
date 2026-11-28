@@ -59,14 +59,17 @@ export function SiteHeader() {
         <div className="flex flex-1 items-center justify-end gap-2 sm:gap-3">
           {!isPending && session?.user ? (
             <div className="hidden items-center gap-3 lg:flex">
-              <div className="flex items-center gap-2 rounded-full border border-header-border bg-[#f8faff] py-1.5 pr-3 pl-2">
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 rounded-full border border-header-border bg-[#f8faff] py-1.5 pr-3 pl-2 transition-colors hover:border-brand-orange/40"
+              >
                 <span className="grid size-7 place-items-center rounded-full bg-brand-orange/10 text-brand-orange">
                   <UserIcon className="size-4" />
                 </span>
                 <span className="text-sm font-semibold text-brand-navy">
                   {session.user.name || session.user.email}
                 </span>
-              </div>
+              </Link>
               <Button
                 type="button"
                 variant="outline"

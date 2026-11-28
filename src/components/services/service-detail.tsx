@@ -19,6 +19,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useSession } from "@/lib/auth-client";
 import type { ServiceItem } from "./browse-services";
 
 interface ServiceDetailProps {
@@ -35,13 +36,24 @@ function formatDuration(minutesOrText: string): string {
 
 export function ServiceDetail({ serviceId }: ServiceDetailProps) {
   const phoneInputRef = useRef<HTMLInputElement>(null);
+  const { data: session } = useSession();
 
   const [service, setService] = useState<ServiceItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [selectedThumb, setSelectedThumb] = useState(0);
-  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const saved = JSON.parse(
+        localStorage.getItem("fixmate_wishlist") || "[]",
+      ) as { _id: string }[];
+      return saved.some((item) => item._id === serviceId);
+    } catch {
+      return false;
+    }
+  });
 
   // Request form state
   const [phone, setPhone] = useState("");
@@ -109,6 +121,7 @@ export function ServiceDetail({ serviceId }: ServiceDetailProps) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            customerEmail: session?.user?.email || "",
             phone: phone.trim(),
             address: address.trim(),
             preferredDate,
@@ -299,7 +312,25 @@ export function ServiceDetail({ serviceId }: ServiceDetailProps) {
                   </Button>
                   <button
                     type="button"
-                    onClick={() => setIsWishlisted((prev) => !prev)}
+                    onClick={() => {
+                      const next = !isWishlisted;
+                      setIsWishlisted(next);
+                      try {
+                        const existing = JSON.parse(
+                          localStorage.getItem("fixmate_wishlist") || "[]",
+                        ) as ServiceItem[];
+                        const updated = next
+                          ? [
+                              service,
+                              ...existing.filter((i) => i._id !== service._id),
+                            ]
+                          : existing.filter((i) => i._id !== service._id);
+                        localStorage.setItem(
+                          "fixmate_wishlist",
+                          JSON.stringify(updated),
+                        );
+                      } catch {}
+                    }}
                     aria-label={
                       isWishlisted ? "Remove from saved" : "Save service"
                     }

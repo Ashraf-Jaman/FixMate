@@ -43,6 +43,9 @@ interface BookingItem {
   preferredDate?: string;
   problemDescription?: string;
   status: string;
+  paymentStatus?: "unpaid" | "paid";
+  paymentMethod?: "online" | "cash" | null;
+  paidAt?: string;
   createdAt?: string;
 }
 
@@ -112,6 +115,10 @@ function CustomerDashboard({
     }
   });
   const [loading, setLoading] = useState(true);
+  const [payingId, setPayingId] = useState<string | null>(null);
+  const [selectedMethods, setSelectedMethods] = useState<
+    Record<string, "online" | "cash">
+  >({});
 
   useEffect(() => {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -126,6 +133,41 @@ function CustomerDashboard({
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [userEmail]);
+
+  async function handlePay(booking: BookingItem) {
+    const method = selectedMethods[booking._id] || "online";
+    setPayingId(booking._id);
+    try {
+      const apiBase =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(
+        `${apiBase}/api/dashboard/requests/${booking._id}/pay`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentMethod: method,
+            customerEmail: userEmail,
+          }),
+        },
+      );
+      if (res.ok) {
+        setBookings((prev) =>
+          prev.map((b) =>
+            b._id === booking._id
+              ? { ...b, paymentStatus: "paid", paymentMethod: method }
+              : b,
+          ),
+        );
+        setStats((prev) => ({
+          ...prev,
+          totalSpent: prev.totalSpent + (Number(booking.basePrice) || 0),
+        }));
+      }
+    } finally {
+      setPayingId(null);
+    }
+  }
 
   async function cancelBooking(id: string) {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -279,7 +321,7 @@ function CustomerDashboard({
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span
                       className={cn(
                         "rounded-full px-2.5 py-0.5 text-[11px] font-semibold capitalize ring-1",
@@ -298,6 +340,38 @@ function CustomerDashboard({
                       >
                         Cancel
                       </Button>
+                    )}
+                    {b.status === "completed" && b.paymentStatus !== "paid" && (
+                      <div className="flex items-center gap-1.5">
+                        <select
+                          aria-label="Payment method"
+                          value={selectedMethods[b._id] || "online"}
+                          onChange={(e) =>
+                            setSelectedMethods((prev) => ({
+                              ...prev,
+                              [b._id]: e.target.value as "online" | "cash",
+                            }))
+                          }
+                          className="h-7 rounded-lg border border-header-border bg-white px-2 text-xs font-semibold text-brand-navy"
+                        >
+                          <option value="online">Online</option>
+                          <option value="cash">Cash</option>
+                        </select>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={payingId === b._id}
+                          onClick={() => handlePay(b)}
+                          className="h-7 rounded-lg bg-brand-orange px-3 text-xs font-semibold text-white hover:bg-[#ea6a0c]"
+                        >
+                          {payingId === b._id ? "Paying..." : "Pay Now"}
+                        </Button>
+                      </div>
+                    )}
+                    {b.paymentStatus === "paid" && (
+                      <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 capitalize ring-1 ring-emerald-200">
+                        Paid ({b.paymentMethod || "online"})
+                      </span>
                     )}
                   </div>
                 </div>
@@ -366,13 +440,17 @@ function CustomerDashboard({
                       <td className="py-3">
                         <span
                           className={cn(
-                            "rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1",
-                            b.status === "completed"
+                            "rounded-full px-2.5 py-0.5 text-[11px] font-semibold capitalize ring-1",
+                            b.paymentStatus === "paid"
                               ? STATUS_BADGE.completed
                               : STATUS_BADGE.pending,
                           )}
                         >
-                          {b.status === "completed" ? "Paid" : "Pending"}
+                          {b.paymentStatus === "paid"
+                            ? `Paid (${b.paymentMethod || "online"})`
+                            : b.status === "completed"
+                              ? "Ready to Pay"
+                              : "Unpaid"}
                         </span>
                       </td>
                     </tr>

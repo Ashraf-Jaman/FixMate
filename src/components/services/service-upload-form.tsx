@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import {
   ArrowRight,
   CheckCircle2,
@@ -12,6 +13,7 @@ import {
   Mail,
   MapPin,
   Monitor,
+  ShieldCheck,
   Tag,
   Upload,
   User,
@@ -21,6 +23,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useSession } from "@/lib/auth-client";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -73,6 +76,7 @@ const SERVICE_MODES: { value: ServiceMode; label: string; description: string; i
 
 export function ServiceUploadForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { data: session, isPending } = useSession();
 
   const [form, setForm] = useState<ServiceFormData>({
     title: "",
@@ -86,6 +90,16 @@ export function ServiceUploadForm() {
     technicianName: "",
     technicianEmail: "",
   });
+
+  useEffect(() => {
+    if (session?.user) {
+      setForm((prev) => ({
+        ...prev,
+        technicianName: prev.technicianName || session.user.name || "",
+        technicianEmail: prev.technicianEmail || session.user.email || "",
+      }));
+    }
+  }, [session]);
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -188,6 +202,55 @@ export function ServiceUploadForm() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  // ── Access guard ──────────────────────────────────────────────────────────
+
+  if (isPending) {
+    return (
+      <div className="flex justify-center rounded-2xl bg-white p-12 shadow-sm ring-1 ring-[#e3ecfb]">
+        <Loader2 className="size-7 animate-spin text-brand-orange" />
+      </div>
+    );
+  }
+
+  const userRole = (
+    (session?.user as { role?: string } | undefined)?.role || ""
+  ).toLowerCase();
+
+  if (!session?.user || userRole !== "technician") {
+    return (
+      <div className="rounded-2xl bg-white p-6 text-center shadow-[0_24px_60px_-30px_rgba(15,37,68,0.22)] ring-1 ring-[#e3ecfb] sm:rounded-3xl sm:p-10">
+        <div className="mx-auto grid size-14 place-items-center rounded-full bg-amber-50 text-brand-orange">
+          <ShieldCheck aria-hidden="true" className="size-8" />
+        </div>
+        <h2 className="mt-5 text-2xl font-extrabold text-brand-navy">
+          Technicians Only
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
+          {!session?.user
+            ? "Please sign in with a Technician account to upload and list services on FixMate."
+            : "Only Technician accounts can add services. Your current account cannot upload services."}
+        </p>
+        <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          {!session?.user ? (
+            <Button
+              asChild
+              className="h-11 rounded-full bg-brand-orange px-6 text-[15px] font-semibold text-white hover:bg-[#ea6a0c]"
+            >
+              <Link href="/sign-in">Sign In as Technician</Link>
+            </Button>
+          ) : (
+            <Button
+              asChild
+              className="h-11 rounded-full bg-brand-orange px-6 text-[15px] font-semibold text-white hover:bg-[#ea6a0c]"
+            >
+              <Link href="/services">Browse Services</Link>
+            </Button>
+          )}
+        </div>
+      </div>
+    );
   }
 
   // ── Success screen ────────────────────────────────────────────────────────

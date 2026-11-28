@@ -36,7 +36,7 @@ function formatDuration(minutesOrText: string): string {
 
 export function ServiceDetail({ serviceId }: ServiceDetailProps) {
   const phoneInputRef = useRef<HTMLInputElement>(null);
-  const { data: session } = useSession();
+  const { data: session, isPending: sessionPending } = useSession();
 
   const [service, setService] = useState<ServiceItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -406,7 +406,44 @@ export function ServiceDetail({ serviceId }: ServiceDetailProps) {
             Request a Service
           </h2>
 
-          {submitted ? (
+          {service.approvalStatus !== "approved" ? (
+            <div className="mt-5 rounded-2xl bg-amber-50 p-5 text-center ring-1 ring-amber-200">
+              <h3 className="text-sm font-bold text-brand-navy">
+                Pending Admin Approval
+              </h3>
+              <p className="mt-1 text-xs leading-5 text-slate-600">
+                This service is not published yet and cannot be booked until an
+                admin approves it.
+              </p>
+            </div>
+          ) : !sessionPending && !session?.user ? (
+            <div className="mt-5 rounded-2xl bg-[#f8faff] p-5 text-center ring-1 ring-[#e3ecfb]">
+              <h3 className="text-sm font-bold text-brand-navy">
+                Sign in to Book
+              </h3>
+              <p className="mt-1 text-xs leading-5 text-slate-600">
+                Only signed-in customers can request and pay for this service.
+              </p>
+              <Button
+                asChild
+                className="mt-4 h-9 rounded-full bg-brand-orange px-5 text-xs font-semibold text-white hover:bg-[#ea6a0c]"
+              >
+                <Link href="/sign-in">Sign In as Customer</Link>
+              </Button>
+            </div>
+          ) : !sessionPending &&
+            ((session?.user as { role?: string } | undefined)?.role ||
+              "customer") !== "customer" ? (
+            <div className="mt-5 rounded-2xl bg-amber-50 p-5 text-center ring-1 ring-amber-200">
+              <h3 className="text-sm font-bold text-brand-navy">
+                Customers Only
+              </h3>
+              <p className="mt-1 text-xs leading-5 text-slate-600">
+                Only customer accounts can book services. Technicians and admins
+                cannot place service bookings.
+              </p>
+            </div>
+          ) : submitted ? (
             <div className="mt-5 rounded-2xl bg-emerald-50 p-5 text-center ring-1 ring-emerald-200">
               <CheckCircle2 className="mx-auto size-9 text-emerald-600" />
               <h3 className="mt-3 text-base font-bold text-brand-navy">

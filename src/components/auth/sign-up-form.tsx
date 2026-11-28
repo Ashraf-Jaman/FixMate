@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   CheckCircle2,
   Eye,
   EyeOff,
+  Loader2,
   Lock,
   Mail,
   Phone,
@@ -17,6 +19,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { authClient } from "@/lib/auth-client";
 
 type UserRole = "customer" | "technician";
 
@@ -41,6 +44,8 @@ const roles: {
 ];
 
 export function SignUpForm() {
+  const router = useRouter();
+
   const [role, setRole] = useState<UserRole>("customer");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -52,9 +57,10 @@ export function SignUpForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
 
@@ -83,7 +89,31 @@ export function SignUpForm() {
       return;
     }
 
-    setSubmitted(true);
+    setIsLoading(true);
+
+    try {
+      const { error: signUpError } = await authClient.signUp.email({
+        email: email.trim(),
+        password,
+        name: fullName.trim(),
+        role,
+        phone: phone.trim() || undefined,
+        specialty: role === "technician" ? specialty : undefined,
+      });
+
+      if (signUpError) {
+        setError(signUpError.message || "Failed to create account. Please try again.");
+        setIsLoading(false);
+        return;
+      }
+
+      setSubmitted(true);
+      router.refresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      setError(msg);
+      setIsLoading(false);
+    }
   }
 
   if (submitted) {
@@ -102,7 +132,7 @@ export function SignUpForm() {
           <span className="font-semibold text-brand-orange capitalize">
             {role}
           </span>{" "}
-          account is ready.
+          account is ready and you are signed in.
         </p>
         <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Button
@@ -119,7 +149,7 @@ export function SignUpForm() {
             variant="outline"
             className="h-11 rounded-full border-header-border bg-white px-6 text-[15px] font-semibold text-brand-navy hover:bg-slate-50"
           >
-            <Link href="/sign-in">Sign In</Link>
+            <Link href="/sign-in">Sign In Page</Link>
           </Button>
         </div>
       </div>
@@ -168,6 +198,7 @@ export function SignUpForm() {
                   key={item.value}
                   type="button"
                   role="radio"
+                  disabled={isLoading}
                   aria-checked={isSelected}
                   onClick={() => setRole(item.value)}
                   className={cn(
@@ -175,6 +206,7 @@ export function SignUpForm() {
                     isSelected
                       ? "border-brand-orange bg-brand-orange/5 ring-2 ring-brand-orange/20"
                       : "border-header-border bg-[#f8faff] hover:border-slate-300 hover:bg-white",
+                    isLoading && "opacity-60 cursor-not-allowed",
                   )}
                 >
                   <span
@@ -220,10 +252,11 @@ export function SignUpForm() {
               type="text"
               autoComplete="name"
               required
+              disabled={isLoading}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="John Doe"
-              className="h-11 w-full rounded-xl border border-header-border bg-[#f8faff] pr-4 pl-10 text-sm text-brand-navy placeholder:text-slate-400 focus:border-brand-orange focus:bg-white focus:ring-2 focus:ring-brand-orange/20 focus:outline-none"
+              className="h-11 w-full rounded-xl border border-header-border bg-[#f8faff] pr-4 pl-10 text-sm text-brand-navy placeholder:text-slate-400 focus:border-brand-orange focus:bg-white focus:ring-2 focus:ring-brand-orange/20 focus:outline-none disabled:opacity-60"
             />
           </div>
         </div>
@@ -247,10 +280,11 @@ export function SignUpForm() {
               type="email"
               autoComplete="email"
               required
+              disabled={isLoading}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="h-11 w-full rounded-xl border border-header-border bg-[#f8faff] pr-4 pl-10 text-sm text-brand-navy placeholder:text-slate-400 focus:border-brand-orange focus:bg-white focus:ring-2 focus:ring-brand-orange/20 focus:outline-none"
+              className="h-11 w-full rounded-xl border border-header-border bg-[#f8faff] pr-4 pl-10 text-sm text-brand-navy placeholder:text-slate-400 focus:border-brand-orange focus:bg-white focus:ring-2 focus:ring-brand-orange/20 focus:outline-none disabled:opacity-60"
             />
           </div>
         </div>
@@ -274,10 +308,11 @@ export function SignUpForm() {
               name="phone"
               type="tel"
               autoComplete="tel"
+              disabled={isLoading}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+1 (555) 000-0000"
-              className="h-11 w-full rounded-xl border border-header-border bg-[#f8faff] pr-4 pl-10 text-sm text-brand-navy placeholder:text-slate-400 focus:border-brand-orange focus:bg-white focus:ring-2 focus:ring-brand-orange/20 focus:outline-none"
+              className="h-11 w-full rounded-xl border border-header-border bg-[#f8faff] pr-4 pl-10 text-sm text-brand-navy placeholder:text-slate-400 focus:border-brand-orange focus:bg-white focus:ring-2 focus:ring-brand-orange/20 focus:outline-none disabled:opacity-60"
             />
           </div>
         </div>
@@ -295,9 +330,10 @@ export function SignUpForm() {
               id="specialty"
               name="specialty"
               required
+              disabled={isLoading}
               value={specialty}
               onChange={(e) => setSpecialty(e.target.value)}
-              className="mt-1.5 h-11 w-full rounded-xl border border-header-border bg-[#f8faff] px-3.5 text-sm text-brand-navy focus:border-brand-orange focus:bg-white focus:ring-2 focus:ring-brand-orange/20 focus:outline-none"
+              className="mt-1.5 h-11 w-full rounded-xl border border-header-border bg-[#f8faff] px-3.5 text-sm text-brand-navy focus:border-brand-orange focus:bg-white focus:ring-2 focus:ring-brand-orange/20 focus:outline-none disabled:opacity-60"
             >
               <option value="">Select your specialty</option>
               <option value="smartphone">Smartphone Repair</option>
@@ -327,14 +363,16 @@ export function SignUpForm() {
               type={showPassword ? "text" : "password"}
               autoComplete="new-password"
               required
+              disabled={isLoading}
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="At least 8 characters"
-              className="h-11 w-full rounded-xl border border-header-border bg-[#f8faff] pr-11 pl-10 text-sm text-brand-navy placeholder:text-slate-400 focus:border-brand-orange focus:bg-white focus:ring-2 focus:ring-brand-orange/20 focus:outline-none"
+              className="h-11 w-full rounded-xl border border-header-border bg-[#f8faff] pr-11 pl-10 text-sm text-brand-navy placeholder:text-slate-400 focus:border-brand-orange focus:bg-white focus:ring-2 focus:ring-brand-orange/20 focus:outline-none disabled:opacity-60"
             />
             <button
               type="button"
+              disabled={isLoading}
               onClick={() => setShowPassword((prev) => !prev)}
               aria-label={showPassword ? "Hide password" : "Show password"}
               className="absolute top-1/2 right-3 -translate-y-1/2 text-slate-400 hover:text-brand-navy"
@@ -367,13 +405,15 @@ export function SignUpForm() {
               type={showConfirmPassword ? "text" : "password"}
               autoComplete="new-password"
               required
+              disabled={isLoading}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Re-enter your password"
-              className="h-11 w-full rounded-xl border border-header-border bg-[#f8faff] pr-11 pl-10 text-sm text-brand-navy placeholder:text-slate-400 focus:border-brand-orange focus:bg-white focus:ring-2 focus:ring-brand-orange/20 focus:outline-none"
+              className="h-11 w-full rounded-xl border border-header-border bg-[#f8faff] pr-11 pl-10 text-sm text-brand-navy placeholder:text-slate-400 focus:border-brand-orange focus:bg-white focus:ring-2 focus:ring-brand-orange/20 focus:outline-none disabled:opacity-60"
             />
             <button
               type="button"
+              disabled={isLoading}
               onClick={() => setShowConfirmPassword((prev) => !prev)}
               aria-label={
                 showConfirmPassword ? "Hide password" : "Show password"
@@ -395,6 +435,7 @@ export function SignUpForm() {
             id="terms"
             name="terms"
             type="checkbox"
+            disabled={isLoading}
             checked={agreed}
             onChange={(e) => setAgreed(e.target.checked)}
             className="mt-0.5 size-4 rounded border-header-border accent-brand-orange"
@@ -420,10 +461,20 @@ export function SignUpForm() {
 
         <Button
           type="submit"
+          disabled={isLoading}
           className="mt-2 h-11 w-full rounded-full bg-brand-orange text-[15px] font-semibold text-white shadow-[0_12px_28px_-12px_rgba(249,115,22,0.75)] hover:bg-[#ea6a0c] sm:h-12"
         >
-          Create Account
-          <ArrowRight aria-hidden="true" className="size-4" />
+          {isLoading ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Creating Account...
+            </>
+          ) : (
+            <>
+              Create Account
+              <ArrowRight aria-hidden="true" className="size-4" />
+            </>
+          )}
         </Button>
       </form>
 

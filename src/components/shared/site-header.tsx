@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Menu, Search } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { LogOut, Menu, User as UserIcon } from "lucide-react";
 
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { signOut, useSession } from "@/lib/auth-client";
 
 const navItems = [
   { label: "Home", href: "/" },
@@ -27,6 +28,13 @@ const navItems = [
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { data: session, isPending } = useSession();
+
+  async function handleSignOut() {
+    await signOut();
+    router.refresh();
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-header-border bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85">
@@ -49,20 +57,44 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex flex-1 items-center justify-end gap-2 sm:gap-3">
-          <Button
-            asChild
-            variant="outline"
-            className="hidden h-10 rounded-full border-header-border bg-white px-5 text-[15px] font-semibold text-brand-navy hover:bg-slate-50 hover:text-brand-navy lg:inline-flex"
-          >
-            <Link href="/sign-in">Sign In</Link>
-          </Button>
+          {!isPending && session?.user ? (
+            <div className="hidden items-center gap-3 lg:flex">
+              <div className="flex items-center gap-2 rounded-full border border-header-border bg-[#f8faff] py-1.5 pr-3 pl-2">
+                <span className="grid size-7 place-items-center rounded-full bg-brand-orange/10 text-brand-orange">
+                  <UserIcon className="size-4" />
+                </span>
+                <span className="text-sm font-semibold text-brand-navy">
+                  {session.user.name || session.user.email}
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSignOut}
+                className="h-10 rounded-full border-header-border bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-red-50 hover:text-red-600"
+              >
+                <LogOut className="size-4" />
+                Sign Out
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Button
+                asChild
+                variant="outline"
+                className="hidden h-10 rounded-full border-header-border bg-white px-5 text-[15px] font-semibold text-brand-navy hover:bg-slate-50 hover:text-brand-navy lg:inline-flex"
+              >
+                <Link href="/sign-in">Sign In</Link>
+              </Button>
 
-          <Button
-            asChild
-            className="hidden h-10 rounded-full bg-brand-orange px-5 text-[15px] font-semibold text-white shadow-[0_4px_12px_-6px_rgba(249,115,22,0.55)] hover:bg-[#ea6a0c] lg:inline-flex"
-          >
-            <Link href="/sign-up">Sign Up</Link>
-          </Button>
+              <Button
+                asChild
+                className="hidden h-10 rounded-full bg-brand-orange px-5 text-[15px] font-semibold text-white shadow-[0_4px_12px_-6px_rgba(249,115,22,0.55)] hover:bg-[#ea6a0c] lg:inline-flex"
+              >
+                <Link href="/sign-up">Sign Up</Link>
+              </Button>
+            </>
+          )}
 
           <Sheet>
             <SheetTrigger asChild>
@@ -106,28 +138,61 @@ export function SiteHeader() {
               </nav>
 
               <SheetFooter className="mt-auto gap-2 border-t border-header-border p-4">
-                <SheetClose asChild>
-                  <Link
-                    href="/sign-in"
-                    className={cn(
-                      buttonVariants({ variant: "outline" }),
-                      "h-11 w-full rounded-full border-header-border bg-white text-[15px] font-semibold text-brand-navy hover:bg-slate-50 hover:text-brand-navy",
-                    )}
-                  >
-                    Sign In
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link
-                    href="/sign-up"
-                    className={cn(
-                      buttonVariants(),
-                      "h-11 w-full rounded-full bg-brand-orange text-[15px] font-semibold text-white hover:bg-[#ea6a0c]",
-                    )}
-                  >
-                    Sign Up
-                  </Link>
-                </SheetClose>
+                {!isPending && session?.user ? (
+                  <div className="flex w-full flex-col gap-2">
+                    <div className="flex items-center gap-2 rounded-xl bg-[#f8faff] p-3 text-left">
+                      <span className="grid size-8 place-items-center rounded-lg bg-brand-orange/10 text-brand-orange">
+                        <UserIcon className="size-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-brand-navy">
+                          {session.user.name}
+                        </p>
+                        <p className="truncate text-xs text-slate-500">
+                          {session.user.email}
+                        </p>
+                      </div>
+                    </div>
+                    <SheetClose asChild>
+                      <button
+                        type="button"
+                        onClick={handleSignOut}
+                        className={cn(
+                          buttonVariants({ variant: "outline" }),
+                          "h-11 w-full rounded-full border-header-border bg-white text-[15px] font-semibold text-red-600 hover:bg-red-50",
+                        )}
+                      >
+                        <LogOut className="size-4" />
+                        Sign Out
+                      </button>
+                    </SheetClose>
+                  </div>
+                ) : (
+                  <>
+                    <SheetClose asChild>
+                      <Link
+                        href="/sign-in"
+                        className={cn(
+                          buttonVariants({ variant: "outline" }),
+                          "h-11 w-full rounded-full border-header-border bg-white text-[15px] font-semibold text-brand-navy hover:bg-slate-50 hover:text-brand-navy",
+                        )}
+                      >
+                        Sign In
+                      </Link>
+                    </SheetClose>
+                    <SheetClose asChild>
+                      <Link
+                        href="/sign-up"
+                        className={cn(
+                          buttonVariants(),
+                          "h-11 w-full rounded-full bg-brand-orange text-[15px] font-semibold text-white hover:bg-[#ea6a0c]",
+                        )}
+                      >
+                        Sign Up
+                      </Link>
+                    </SheetClose>
+                  </>
+                )}
               </SheetFooter>
             </SheetContent>
           </Sheet>

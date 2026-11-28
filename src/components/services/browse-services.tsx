@@ -381,10 +381,10 @@ export function BrowseServices() {
           ) : (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {filteredServices.map((service) => (
-                <article
+                <Link
                   key={service._id}
-                  onClick={() => setActiveService(service)}
-                  className="group flex cursor-pointer flex-col rounded-2xl bg-white p-3.5 shadow-[0_14px_40px_-24px_rgba(15,37,68,0.18)] ring-1 ring-[#e3ecfb] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_48px_-24px_rgba(15,37,68,0.28)]"
+                  href={`/services/${service._id}`}
+                  className="group flex flex-col rounded-2xl bg-white p-3.5 shadow-[0_14px_40px_-24px_rgba(15,37,68,0.18)] ring-1 ring-[#e3ecfb] transition-all hover:-translate-y-0.5 hover:shadow-[0_20px_48px_-24px_rgba(15,37,68,0.28)]"
                 >
                   {/* Card Image */}
                   <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#f4f7ff]">
@@ -422,7 +422,7 @@ export function BrowseServices() {
                       </span>
                     </div>
                   </div>
-                </article>
+                </Link>
               ))}
             </div>
           )}

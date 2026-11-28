@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { SiteFooter } from "@/components/shared/site-footer";
@@ -29,7 +30,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-page font-sans text-foreground">
-        <SiteHeader />
+        <Suspense
+          fallback={
+            <header className="sticky top-0 z-50 h-[76px] border-b border-header-border bg-white/95" />
+          }
+        >
+          <SiteHeader />
+        </Suspense>
         {children}
         <SiteFooter />
       </body>

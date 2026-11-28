@@ -96,9 +96,10 @@ export function SignUpForm() {
         email: email.trim(),
         password,
         name: fullName.trim(),
-        role,
         phone: phone.trim() || undefined,
         specialty: role === "technician" ? specialty : undefined,
+        // @ts-expect-error better-auth additional field not reflected in generated types
+        role,
       });
 
       if (signUpError) {

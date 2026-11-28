@@ -6,20 +6,16 @@ import {
   AirVent,
   ArrowRight,
   ChevronDown,
-  Clock,
   Cpu,
   Home,
   Laptop,
   LayoutGrid,
-  MapPin,
   MoreHorizontal,
   Plus,
   Search,
   Smartphone,
   Tv,
-  User,
   Wrench,
-  X,
   Zap,
 } from "lucide-react";
 
@@ -105,14 +101,6 @@ const SIDEBAR_CATEGORIES: SidebarCategory[] = [
   },
 ];
 
-function formatDuration(minutesOrText: string): string {
-  const mins = Number(minutesOrText);
-  if (Number.isNaN(mins)) return minutesOrText;
-  if (mins < 60) return `${mins} mins`;
-  const hrs = mins / 60;
-  return hrs === 1 ? "1 hour" : `${hrs} hours`;
-}
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function BrowseServices() {
@@ -123,7 +111,6 @@ export function BrowseServices() {
   const [searchInput, setSearchInput] = useState("");
   const [appliedQuery, setAppliedQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [activeService, setActiveService] = useState<ServiceItem | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -428,107 +415,6 @@ export function BrowseServices() {
           )}
         </section>
       </div>
-
-      {/* Service Detail Modal */}
-      {activeService && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="service-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/50 p-4 backdrop-blur-xs"
-          onClick={() => setActiveService(null)}
-        >
-          <div
-            className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-[#e3ecfb]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setActiveService(null)}
-              aria-label="Close service details"
-              className="absolute top-3 right-3 z-10 grid size-8 place-items-center rounded-full bg-white/90 text-slate-600 shadow ring-1 ring-slate-200 hover:text-brand-navy"
-            >
-              <X className="size-4" />
-            </button>
-
-            <div className="aspect-[16/9] w-full bg-[#f4f7ff]">
-              {activeService.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={activeService.image}
-                  alt={activeService.title}
-                  className="size-full object-cover"
-                />
-              ) : (
-                <div className="grid size-full place-items-center bg-gradient-to-br from-[#eef4ff] to-[#e3ecfb] text-brand-navy/40">
-                  <Cpu className="size-12" />
-                </div>
-              )}
-            </div>
-
-            <div className="p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <span className="inline-block rounded-full bg-[#e8f0fe] px-3 py-0.5 text-xs font-semibold text-[#2563eb] capitalize">
-                    {activeService.category}
-                  </span>
-                  <h2
-                    id="service-modal-title"
-                    className="mt-2 text-xl font-extrabold text-brand-navy"
-                  >
-                    {activeService.title}
-                  </h2>
-                </div>
-                <p className="shrink-0 text-lg font-extrabold text-brand-orange">
-                  ৳ {Number(activeService.basePrice).toLocaleString()}+
-                </p>
-              </div>
-
-              <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                {activeService.description}
-              </p>
-
-              <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-[#f8faff] p-4 text-xs text-slate-600 ring-1 ring-[#e3ecfb]">
-                <div className="flex items-center gap-2">
-                  <Clock className="size-4 text-brand-orange" />
-                  <span>{formatDuration(activeService.estimatedDuration)}</span>
-                </div>
-                <div className="flex items-center gap-2 capitalize">
-                  <Wrench className="size-4 text-brand-orange" />
-                  <span>{activeService.serviceMode}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="size-4 text-brand-orange" />
-                  <span className="truncate">{activeService.serviceArea}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <User className="size-4 text-brand-orange" />
-                  <span className="truncate">{activeService.technicianName}</span>
-                </div>
-              </div>
-
-              <div className="mt-6 flex justify-end gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setActiveService(null)}
-                  className="rounded-full border-header-border"
-                >
-                  Close
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => setActiveService(null)}
-                  className="rounded-full bg-brand-orange px-6 text-white hover:bg-[#ea6a0c]"
-                >
-                  Book Now
-                  <ArrowRight className="size-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

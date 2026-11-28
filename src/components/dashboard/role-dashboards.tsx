@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRight,
   Calendar,
@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock,
+  CreditCard,
   DollarSign,
   Headphones,
   Loader2,
@@ -44,7 +45,7 @@ interface BookingItem {
   problemDescription?: string;
   status: string;
   paymentStatus?: "unpaid" | "paid";
-  paymentMethod?: "online" | "cash" | null;
+  paymentMethod?: "online" | "cash" | "stripe" | null;
   paidAt?: string;
   createdAt?: string;
 }
@@ -116,9 +117,11 @@ function CustomerDashboard({
   });
   const [loading, setLoading] = useState(true);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
   const [selectedMethods, setSelectedMethods] = useState<
-    Record<string, "online" | "cash">
+    Record<string, "stripe" | "cash">
   >({});
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -134,19 +137,100 @@ function CustomerDashboard({
       .finally(() => setLoading(false));
   }, [userEmail]);
 
+  // Handle Stripe redirect — verify payment status after returning
+  useEffect(() => {
+    const payment = searchParams.get("payment");
+    const bookingId = searchParams.get("bookingId");
+    const sessionId = searchParams.get("session_id");
+
+    if (payment === "success" && bookingId) {
+      setPaymentNotice("✅ Payment successful! Your booking has been paid via Stripe.");
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const verifyUrl = sessionId
+        ? `${apiBase}/api/payments/verify/${bookingId}?session_id=${encodeURIComponent(sessionId)}`
+        : `${apiBase}/api/payments/verify/${bookingId}`;
+
+      const checkPayment = async () => {
+        try {
+          const res = await fetch(verifyUrl);
+          const data = await res.json();
+          if (data.paymentStatus === "paid") {
+            setBookings((prev) => {
+              const target = prev.find((b) => b._id === bookingId);
+              if (target && target.paymentStatus !== "paid") {
+                setStats((s) => ({
+                  ...s,
+                  totalSpent: s.totalSpent + (Number(target.basePrice) || 0),
+                }));
+              }
+              return prev.map((b) =>
+                b._id === bookingId
+                  ? { ...b, paymentStatus: "paid", paymentMethod: "stripe" }
+                  : b,
+              );
+            });
+            window.history.replaceState({}, "", "/dashboard");
+            return true;
+          }
+        } catch {}
+        return false;
+      };
+
+      void checkPayment();
+      const interval = setInterval(async () => {
+        const done = await checkPayment();
+        if (done) clearInterval(interval);
+      }, 2000);
+
+      // Stop polling after 30s
+      setTimeout(() => clearInterval(interval), 30000);
+      return () => clearInterval(interval);
+    } else if (payment === "cancelled") {
+      setPaymentNotice("Payment was cancelled. You can try again anytime.");
+      window.history.replaceState({}, "", "/dashboard");
+    }
+  }, [searchParams]);
+
   async function handlePay(booking: BookingItem) {
-    const method = selectedMethods[booking._id] || "online";
+    const method = selectedMethods[booking._id] || "stripe";
     setPayingId(booking._id);
     try {
       const apiBase =
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+      // Stripe online payment — redirect to Stripe Checkout
+      if (method === "stripe") {
+        const res = await fetch(
+          `${apiBase}/api/payments/create-checkout-session`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              bookingId: booking._id,
+              customerEmail: userEmail,
+            }),
+          },
+        );
+        const data = await res.json();
+        if (res.ok && data.url) {
+          window.location.href = data.url;
+          return;
+        }
+        setPaymentNotice(
+          data.message || "Failed to start Stripe checkout. Please try again.",
+        );
+        setPayingId(null);
+        return;
+      }
+
+      // Cash payment — mark as paid directly
       const res = await fetch(
         `${apiBase}/api/dashboard/requests/${booking._id}/pay`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            paymentMethod: method,
+            paymentMethod: "cash",
             customerEmail: userEmail,
           }),
         },
@@ -155,7 +239,7 @@ function CustomerDashboard({
         setBookings((prev) =>
           prev.map((b) =>
             b._id === booking._id
-              ? { ...b, paymentStatus: "paid", paymentMethod: method }
+              ? { ...b, paymentStatus: "paid", paymentMethod: "cash" }
               : b,
           ),
         );
@@ -233,6 +317,26 @@ function CustomerDashboard({
           </Button>
         </div>
       </div>
+
+      {/* Payment Notification */}
+      {paymentNotice && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <div className="flex items-center gap-2.5">
+            <CreditCard className="size-5 text-emerald-600" />
+            <p className="text-sm font-semibold text-emerald-800">
+              {paymentNotice}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPaymentNotice(null)}
+            className="rounded-lg p-1 text-emerald-500 hover:bg-emerald-100"
+            aria-label="Dismiss"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
@@ -345,16 +449,16 @@ function CustomerDashboard({
                       <div className="flex items-center gap-1.5">
                         <select
                           aria-label="Payment method"
-                          value={selectedMethods[b._id] || "online"}
+                          value={selectedMethods[b._id] || "stripe"}
                           onChange={(e) =>
                             setSelectedMethods((prev) => ({
                               ...prev,
-                              [b._id]: e.target.value as "online" | "cash",
+                              [b._id]: e.target.value as "stripe" | "cash",
                             }))
                           }
                           className="h-7 rounded-lg border border-header-border bg-white px-2 text-xs font-semibold text-brand-navy"
                         >
-                          <option value="online">Online</option>
+                          <option value="stripe">💳 Stripe</option>
                           <option value="cash">Cash</option>
                         </select>
                         <Button
